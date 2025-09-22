@@ -1,75 +1,103 @@
-# OpenFrame Overview
+#Project Proposal: High-Speed CRC and Parallel CRC Accelerator for Reliable Network Protocols on Microwatt
+## 2. Motivation and Problem Statement
+In modern network communication, error detection is essential to ensure data integrity. Cyclic Redundancy Check (CRC) is a widely used mechanism for detecting errors in transmitted data. However, traditional CRC implementations can become a performance bottleneck in high-speed systems, especially when implemented purely in software.
 
-The OpenFrame Project provides an empty harness chip that differs significantly from the Caravel and Caravan designs. Unlike Caravel and Caravan, which include integrated SoCs and additional features, OpenFrame offers only the essential padframe, providing users with a clean slate for their custom designs.
+The goal of this project is to design and integrate a **hardware-accelerated CRC unit** (including parallel CRC computation support) with the open-source Microwatt CPU core. This accelerator will significantly reduce latency and increase throughput for error detection in network protocol applications.
 
-<img width="256" alt="Screenshot 2024-06-24 at 12 53 39 PM" src="https://github.com/efabless/openframe_timer_example/assets/67271180/ff58b58b-b9c8-4d5e-b9bc-bf344355fa80">
+## 3. Objectives
+- Implement a **CRC computation accelerator** in Verilog/VHDL.  
+- Support **parallel CRC calculation** for multiple bytes per clock cycle.  
+- Integrate the accelerator as a **memory-mapped peripheral** to Microwatt.  
+- Demonstrate performance improvements compared to software-only CRC.  
+- Provide testbenches and simulation results.  
 
-## Key Characteristics of OpenFrame
+## 4. High-Level Block Diagrams
 
-1. **Minimalist Design:** 
-   - No integrated SoC or additional circuitry.
-   - Only includes the padframe, a power-on-reset circuit, and a digital ROM containing the 32-bit project ID.
-
-2. **Padframe Compatibility:**
-   - The padframe design and pin placements match those of the Caravel and Caravan chips, ensuring compatibility and ease of transition between designs.
-   - Pin types are identical, with power and ground pins positioned similarly and the same power domains available.
-
-3. **Flexibility:**
-   - Provides full access to all GPIO controls.
-   - Maximizes the user project area, allowing for greater customization and integration of alternative SoCs or user-specific projects at the same hierarchy level.
-
-4. **Simplified I/O:**
-   - Pins that previously connected to CPU functions (e.g., flash controller interface, SPI interface, UART) are now repurposed as general-purpose I/O, offering flexibility for various applications.
-
-The OpenFrame harness is ideal for those looking to implement custom SoCs or integrate user projects without the constraints of an existing SoC.
-
-## Features
-
-1. 44 configurable GPIOs.
-2. User area of approximately 15mm².
-3. Supports digital, analog, or mixed-signal designs.
-
-# openframe_timer_example
-
-This example implements a simple timer and connects it to the GPIOs.
-
-## Installation and Setup
-
-First, clone the repository:
-
-```bash
-git clone https://github.com/efabless/openframe_timer_example.git
-cd openframe_timer_example
+### ASCII Block Diagram (simple, easy to include in README)
+```
++-----------------+              +-----------------------+             +------------------+
+|   Microwatt     |<--busctrl--->|  Memory-mapped Bus    |<--AXI/Wishbone->| Packet Buffer   |
+|   CPU (SW)      |              |  (e.g., Wishbone/AXI) |             | (DDR/SRAM or TB) |
++-----------------+              +-----------------------+             +------------------+
+        |                                 |
+        | memory-mapped registers         | memory-mapped data region (packet buffer)
+        |                                 |
+        v                                 v
++----------------------+          +----------------------------+
+| CRC Accelerator      |<-------->| Control & Status Registers |
+| + Parallel CRC Unit  |          | - CMD_START                |
+| + Header Parser FSM  |          | - STATUS_DONE              |
+| + Data FIFO / DMA    |          | - CRC_OUT (32-bit)        |
++----------------------+          +----------------------------+
+        ^
+        | (reads packet buffer, or CPU writes stream)
+        |
+   Packet stream or bus bursts
 ```
 
-Then, download all dependencies:
-
-```bash
-make setup
+### LaTeX/TikZ Diagram (copy into a LaTeX document if you want a printable figure)
+```latex
+\documentclass{standalone}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}[node distance=2cm, every node/.style={draw, rounded corners, align=center}]
+  \node (cpu) {Microwatt\\CPU (Software)};
+  \node[right=of cpu] (bus) {Memory-mapped\\Bus (Wishbone/AXI)};
+  \node[right=of bus] (mem) {Packet Buffer\\(SRAM/DDR/TB)};
+  \node[below=of bus] (acc) {CRC Accelerator\\(Parallel CRC + Parser)};
+  \node[below=of acc] (regs) {Control \& Status\\Registers};
+  \draw[->] (cpu) -- (bus) node[midway,above]{loads packet / issues CMD};
+  \draw[->] (bus) -- (mem) node[midway,above]{packet data};
+  \draw[->] (mem) -- (acc) node[midway,left]{read packet stream};
+  \draw[->] (acc) -- (regs) node[midway,left]{CRC / fields};
+  \draw[->] (regs) -- (cpu) node[midway,left]{status/interrupt};
+  \draw[->] (cpu) -- (regs) node[midway,right]{start / config};
+\end{tikzpicture}
+\end{document}
 ```
 
-## Hardening the Design
+## 5. Methodology
+1. **Literature Review**: Study CRC algorithms and parallel computation methods.  
+2. **Hardware Design**: Implement CRC accelerator (serial + parallel) in Verilog/VHDL and header parser FSM.  
+3. **Integration**: Connect accelerator to Microwatt via memory-mapped registers (Wishbone or AXI-lite style). API: input buffer pointer, length, start, status, CRC_OUT, parsed fields.  
+4. **Software Support**: Write driver in C for Microwatt that:
+   - Allocates/points to packet buffer
+   - Writes commands to registers
+   - Polls/handles interrupt on completion
+   - Compares hardware CRC with software CRC for validation
+5. **Testing**: Unit test with known CRC vectors; end-to-end test in Microwatt simulation.  
+6. **Evaluation**: Measure throughput, latency, cycles consumed by CPU for software vs hardware path.
 
-In this example, we will harden the timer. You will need to harden your own design similarly.
+## 6. Timeline (20 Days)
+- **Days 1–3**: Literature review, finalize CRC polynomial and parallelization factor (bytes per cycle).  
+- **Days 4–10**: Implement CRC unit (serial + parallel), unit test CRC.  
+- **Days 11–14**: Implement header parser FSM and memory-mapped register interface.  
+- **Days 15–17**: Integrate with Microwatt simulation, write C driver and test programs.  
+- **Days 18–19**: Run benchmarks comparing hardware vs software CRC; collect results.  
+- **Day 20**: Finalize documentation, prepare submission package.
 
-```bash
-make user_proj_timer
-```
+## 7. Example Memory-Mapped Register Map (suggested)
+- `0x00` CMD_START (write: 1=start)  
+- `0x04` STATUS (read: bit0=done, bit1=error)  
+- `0x08` BUF_ADDR (write: base address of packet buffer)  
+- `0x0C` BUF_LEN  (write: length in bytes)  
+- `0x10` CRC_OUT  (read: 32-bit CRC result)  
+- `0x14` PARSED_IP_SRC (read: 32-bit)  
+- `0x18` PARSED_IP_DST (read: 32-bit)  
+- `0x1C` PARSED_PROTOCOL (read: 8-bit)
 
-Once you have hardened your design, integrate it into the OpenFrame wrapper:
+## 8. Deliverables
+- Verilog/VHDL source for CRC & parser (synthesizable).  
+- Testbenches and sample packet traces.  
+- Microwatt integration wrapper (bus interface).  
+- C driver + example applications.  
+- README, design notes, and performance report.  
 
-```bash
-make openframe_project_wrapper
-```
+## 9. References
+- Koopman, P. (2002). *32-bit Cyclic Redundancy Codes for Internet Applications.* DSN.  
+- Zhang, X., & Prasanna, V. (2003). *High-Throughput and Resource-Efficient CRC Implementation.* FCCM.  
+- OpenCores — CRC IP cores.  
+- Microwatt — https://github.com/antonblanchard/microwatt
 
-## Important Notes
-
-1. **Connecting to Power:**
-   - Ensure your design is connected to power using the power pins on the wrapper.
-   - Use the `vccd1_connection` and `vssd1_connection` macros, which contain the necessary vias and nets for power connections.
-
-2. **Flattening the Design:**
-   - If you plan to flatten your design within the `openframe_project_wrapper`, do not buffer the analog pins using standard cells.
-
-3. **Running Custom Steps:**
-   - Execute the custom step in OpenLane that copies the power pins from the template DEF. If this step is skipped, the precheck will fail, and your design will not be powered.
+---
+*If you want, I can also create a PNG/SVG of the TikZ diagram and drop it into the project folder. Would you like that?*
