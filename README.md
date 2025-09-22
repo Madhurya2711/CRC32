@@ -1,4 +1,4 @@
-#Project Proposal: High-Speed CRC and Parallel CRC Accelerator for Reliable Network Protocols on Microwatt
+##1. Project Title: High-Speed CRC and Parallel CRC Accelerator for Reliable Network Protocols on Microwatt
 ## 2. Motivation and Problem Statement
 In modern network communication, error detection is essential to ensure data integrity. Cyclic Redundancy Check (CRC) is a widely used mechanism for detecting errors in transmitted data. However, traditional CRC implementations can become a performance bottleneck in high-speed systems, especially when implemented purely in software.
 
@@ -35,26 +35,7 @@ The goal of this project is to design and integrate a **hardware-accelerated CRC
    Packet stream or bus bursts
 ```
 
-### LaTeX/TikZ Diagram (copy into a LaTeX document if you want a printable figure)
-```latex
-\documentclass{standalone}
-\usepackage{tikz}
-\begin{document}
-\begin{tikzpicture}[node distance=2cm, every node/.style={draw, rounded corners, align=center}]
-  \node (cpu) {Microwatt\\CPU (Software)};
-  \node[right=of cpu] (bus) {Memory-mapped\\Bus (Wishbone/AXI)};
-  \node[right=of bus] (mem) {Packet Buffer\\(SRAM/DDR/TB)};
-  \node[below=of bus] (acc) {CRC Accelerator\\(Parallel CRC + Parser)};
-  \node[below=of acc] (regs) {Control \& Status\\Registers};
-  \draw[->] (cpu) -- (bus) node[midway,above]{loads packet / issues CMD};
-  \draw[->] (bus) -- (mem) node[midway,above]{packet data};
-  \draw[->] (mem) -- (acc) node[midway,left]{read packet stream};
-  \draw[->] (acc) -- (regs) node[midway,left]{CRC / fields};
-  \draw[->] (regs) -- (cpu) node[midway,left]{status/interrupt};
-  \draw[->] (cpu) -- (regs) node[midway,right]{start / config};
-\end{tikzpicture}
-\end{document}
-```
+
 
 ## 5. Methodology
 1. **Literature Review**: Study CRC algorithms and parallel computation methods.  
@@ -99,5 +80,3 @@ The goal of this project is to design and integrate a **hardware-accelerated CRC
 - OpenCores — CRC IP cores.  
 - Microwatt — https://github.com/antonblanchard/microwatt
 
----
-*If you want, I can also create a PNG/SVG of the TikZ diagram and drop it into the project folder. Would you like that?*
