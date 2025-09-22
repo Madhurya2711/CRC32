@@ -1,4 +1,5 @@
-##1. Project Title: High-Speed CRC and Parallel CRC Accelerator for Reliable Network Protocols on Microwatt
+## 1. **Project Title**
+High-Speed CRC and Parallel CRC Accelerator for Reliable Network Protocols on Microwatt
 ## 2. Motivation and Problem Statement
 In modern network communication, error detection is essential to ensure data integrity. Cyclic Redundancy Check (CRC) is a widely used mechanism for detecting errors in transmitted data. However, traditional CRC implementations can become a performance bottleneck in high-speed systems, especially when implemented purely in software.
 
