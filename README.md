@@ -1,7 +1,7 @@
 ## 1. **Project Title**
 High-Speed CRC and Parallel CRC Accelerator for Reliable Network Protocols on Microwatt
 ## 2. Project Overview
-This project implements a high-speed CRC accelerator in Verilog/VHDL, integrated with the open-source Mircowatt CPU as a memory-mapped peripheral. The accelerator supports parallel CRC computation, enabling significant speedup over software-only CRC for networrk protocols. A lightweight driver and benchmarks will demonstrate improved throughput and efficiency in error detection for reliable communication.
+This project implements a high-speed CRC accelerator in Verilog/VHDL, integrated with the open-source Mircowatt CPU as a memory-mapped peripheral. The accelerator supports parallel CRC computation, enabling significant speedup over software-only CRC for network protocols. A lightweight driver and benchmarks will demonstrate improved throughput and efficiency in error detection for reliable communication.
 ## 3. Motivation and Problem Statement
 In modern network communication, error detection is essential to ensure data integrity. Cyclic Redundancy Check (CRC) is a widely used mechanism for detecting errors in transmitted data. However, traditional CRC implementations can become a performance bottleneck in high-speed systems, especially when implemented purely in software.
 
