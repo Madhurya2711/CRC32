@@ -1,0 +1,100 @@
+`timescale 1ns/1ps
+
+module crc32 #(
+    parameter CRC_WIDTH   = 32,
+    parameter DATA_WIDTH  = 8,                // bits processed per cycle (parallelism)
+    parameter POLY        = 32'h04C11DB7,     // normal MSB-first polynomial
+    parameter POLY_REF    = 32'hEDB88320,     // reflected (LSB-first) polynomial
+    parameter INIT        = {CRC_WIDTH{1'b1}},// initial CRC value (default all ones)
+    parameter XOROUT      = {CRC_WIDTH{1'b1}},// final xor
+    parameter REFLECT     = 1                 // 1: use reflected (LSB-first) algorithm
+)(
+    input  wire                    clk,
+    input  wire                    rstn,      // active low reset
+    input  wire                    valid,     // input data valid this cycle
+    input  wire                    last,      // last cycle of frame/packet (assert for CRC output)
+    input  wire [DATA_WIDTH-1:0]   data,      // parallel data bus
+    output reg                     ready,     // ready to accept (simple interface, always 1)
+    output reg                     done,      // asserted high for one cycle when crc_out valid (on 'last')
+    output reg [CRC_WIDTH-1:0]     crc_out    // CRC result (after final XOR)
+);
+
+    // Internal CRC register
+    reg [CRC_WIDTH-1:0] crc_reg;
+
+    integer i;
+    reg [CRC_WIDTH-1:0] next_crc;
+    reg fb;
+    // combinational working copy
+    reg [CRC_WIDTH-1:0] crc_work;
+    reg [DATA_WIDTH-1:0] dwork;
+
+    // ready is always true for this simple accelerator (could be extended)
+    always @(posedge clk or negedge rstn) begin
+        if (!rstn) begin
+            ready <= 1'b1;
+        end else begin
+            ready <= 1'b1;
+        end
+    end
+
+    // synchronous CRC register update and done signalling
+    always @(posedge clk or negedge rstn) begin
+        if (!rstn) begin
+            crc_reg <= INIT;
+            crc_out <= {CRC_WIDTH{1'b0}};
+            done <= 1'b0;
+        end else begin
+            done <= 1'b0;
+            if (valid) begin
+                crc_reg <= next_crc;
+                if (last) begin
+                    // finalization: apply XOROUT and output
+                    crc_out <= next_crc ^ XOROUT;
+                    done <= 1'b1;
+                end
+            end
+        end
+    end
+
+    // combinational logic to compute next_crc from current crc_reg and input data
+    always @(*) begin
+        crc_work = crc_reg;
+        dwork = data;
+        // default
+        next_crc = crc_reg;
+
+        if (REFLECT) begin
+            // Reflected algorithm (LSB-first): feed data bits LSB-first
+            // For k = 0..DATA_WIDTH-1:
+            //   fb = crc_work[0] ^ dwork[k];
+            //   crc_work = (crc_work >> 1);
+            //   if (fb) crc_work = crc_work ^ POLY_REF_shifted;
+            // Where POLY_REF is the reversed polynomial (LSB-first): POLY_REF
+            // Implementation: iterate DATA_WIDTH times
+            next_crc = crc_work;
+            for (i = 0; i < DATA_WIDTH; i = i + 1) begin
+                fb = next_crc[0] ^ dwork[i];
+                next_crc = next_crc >> 1;
+                if (fb)
+                    next_crc = next_crc ^ POLY_REF;
+            end
+        end else begin
+            // Non-reflected algorithm (MSB-first): feed data bits MSB-first
+            // For k = DATA_WIDTH-1 downto 0:
+            //   fb = crc_work[CRC_WIDTH-1] ^ dwork[k];
+            //   crc_work = (crc_work << 1);
+            //   if (fb) crc_work = crc_work ^ POLY;
+            next_crc = crc_work;
+            for (i = DATA_WIDTH-1; i >= 0; i = i - 1) begin
+                fb = next_crc[CRC_WIDTH-1] ^ dwork[i];
+                next_crc = next_crc << 1;
+                if (fb)
+                    next_crc = next_crc ^ POLY;
+                if (i==0) begin end // prevent infinite loop in simulation (i is signed)
+            end
+        end
+    end
+
+endmodule
+
